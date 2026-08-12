@@ -1,0 +1,31 @@
+name: Experiment 1 - Runner Lifetime
+
+on:
+  workflow_dispatch:
+
+jobs:
+  lifetime-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Record start time
+        run: |
+          echo "Pipeline started at: $(date)"
+          echo "Runner hostname: $(hostname)"
+
+      - name: Fail intentionally
+        run: |
+          echo "About to fail at: $(date)"
+          exit 1
+
+      - name: Measure survival after failure
+        if: failure()
+        run: |
+          echo "Reached failure handler at: $(date)"
+          echo "Workspace contents:"
+          ls -la
+          echo "Environment variables:"
+          env
+          echo "Now sleeping 30 minutes to test runner lifetime..."
+          sleep 1800
+          echo "Still alive after 30 minutes at: $(date)"
