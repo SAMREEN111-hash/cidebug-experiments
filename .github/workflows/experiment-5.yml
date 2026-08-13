@@ -1,0 +1,40 @@
+name: Experiment 5 - SSH Key Retrieval
+
+on:
+  workflow_dispatch:
+
+jobs:
+  ssh-key-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Fetch SSH keys from GitHub API
+        run: |
+          echo "Fetching SSH keys for: $GITHUB_ACTOR"
+          echo ""
+          echo "=== RAW API RESPONSE ==="
+          curl -s https://api.github.com/users/$GITHUB_ACTOR/keys
+          echo ""
+          echo "=== KEY COUNT ==="
+          KEY_COUNT=$(curl -s https://api.github.com/users/$GITHUB_ACTOR/keys | python3 -c "import sys,json; keys=json.load(sys.stdin); print(len(keys))")
+          echo "Number of SSH keys registered: $KEY_COUNT"
+          echo ""
+          if [ "$KEY_COUNT" -eq "0" ]; then
+            echo "RESULT: No SSH keys found - OAuth fallback required"
+          else
+            echo "RESULT: SSH keys found - primary auth path works"
+          fi
+
+      - name: Test GITHUB_OUTPUT writing
+        run: |
+          echo "=== TESTING GITHUB_OUTPUT ==="
+          echo "ssh-key-count=$KEY_COUNT" >> $GITHUB_OUTPUT
+          echo "Written to GITHUB_OUTPUT: $GITHUB_OUTPUT"
+          echo ""
+          echo "=== TESTING GITHUB_STEP_SUMMARY ==="
+          echo "## SSH Key Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "Actor: $GITHUB_ACTOR" >> $GITHUB_STEP_SUMMARY
+          echo "Written to GITHUB_STEP_SUMMARY successfully"
+          echo ""
+          echo "=== STEP_SUMMARY PATH ==="
+          echo $GITHUB_STEP_SUMMARY
