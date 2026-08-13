@@ -1,0 +1,69 @@
+name: Experiment 3 - Service Container Reachability
+
+on:
+  workflow_dispatch:
+
+jobs:
+  service-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_USER: testuser
+          POSTGRES_DB: testdb
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Verify services before failure
+        run: |
+          echo "=== TESTING POSTGRES BEFORE FAILURE ==="
+          PGPASSWORD=testpassword psql -h localhost -U testuser -d testdb -c "SELECT 'postgres alive' as status;"
+          echo ""
+          echo "=== TESTING REDIS BEFORE FAILURE ==="
+          redis-cli -h localhost ping
+          echo ""
+          echo "=== WRITING DATA TO POSTGRES ==="
+          PGPASSWORD=testpassword psql -h localhost -U testuser -d testdb -c "CREATE TABLE test (id serial, value text); INSERT INTO test (value) VALUES ('written before failure');"
+          echo ""
+          echo "=== WRITING DATA TO REDIS ==="
+          redis-cli -h localhost SET testkey "written before failure"
+          echo "Services confirmed alive before failure"
+
+      - name: Fail intentionally
+        run: |
+          echo "Failing at: $(date)"
+          exit 1
+
+      - name: Check services after failure
+        if: failure()
+        run: |
+          echo "=== TESTING POSTGRES AFTER FAILURE ==="
+          PGPASSWORD=testpassword psql -h localhost -U testuser -d testdb -c "SELECT * FROM test;" || echo "POSTGRES UNREACHABLE"
+          echo ""
+          echo "=== TESTING REDIS AFTER FAILURE ==="
+          redis-cli -h localhost ping || echo "REDIS UNREACHABLE"
+          echo ""
+          echo "=== READING DATA FROM REDIS ==="
+          redis-cli -h localhost GET testkey || echo "REDIS DATA MISSING"
+          echo ""
+          echo "=== NETWORK INTERFACES ==="
+          ip addr show
