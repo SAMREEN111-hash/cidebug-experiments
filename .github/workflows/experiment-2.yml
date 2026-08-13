@@ -1,0 +1,50 @@
+name: Experiment 2 - Filesystem Fidelity
+
+on:
+  workflow_dispatch:
+
+jobs:
+  filesystem-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Create files before failure
+        run: |
+          echo "Creating test files at: $(date)"
+          echo "hello from step 1" > workspace-file.txt
+          echo "secret-ish content" > /tmp/tmp-file.txt
+          mkdir -p test-dir
+          echo "nested file" > test-dir/nested.txt
+          export MY_STEP_VAR="set-in-step-1"
+          echo "MY_STEP_VAR=set-in-step-1" >> $GITHUB_ENV
+          echo "Files created:"
+          ls -la
+          echo "MY_STEP_VAR=$MY_STEP_VAR"
+
+      - name: Fail intentionally
+        run: |
+          echo "Failing at: $(date)"
+          exit 1
+
+      - name: Check filesystem after failure
+        if: failure()
+        run: |
+          echo "=== WORKSPACE FILES ==="
+          ls -la
+          echo ""
+          echo "=== workspace-file.txt ==="
+          cat workspace-file.txt || echo "FILE MISSING"
+          echo ""
+          echo "=== /tmp/tmp-file.txt ==="
+          cat /tmp/tmp-file.txt || echo "FILE MISSING"
+          echo ""
+          echo "=== test-dir/nested.txt ==="
+          cat test-dir/nested.txt || echo "FILE MISSING"
+          echo ""
+          echo "=== ENV VAR FROM PREVIOUS STEP ==="
+          echo "MY_STEP_VAR=$MY_STEP_VAR"
+          echo ""
+          echo "=== GITHUB_OUTPUT exists? ==="
+          echo "GITHUB_OUTPUT path: $GITHUB_OUTPUT"
+          echo "test-result=filesystem-verified" >> $GITHUB_OUTPUT
+          echo "Written to GITHUB_OUTPUT successfully"
