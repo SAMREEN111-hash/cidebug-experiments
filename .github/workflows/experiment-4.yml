@@ -1,0 +1,40 @@
+name: Experiment 4 - Webhook Timing
+
+on:
+  workflow_dispatch:
+
+jobs:
+  timing-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Timestamp 1 - Job started
+        run: |
+          TS=$(date +%s%3N)
+          echo "Job started at: $(date) ($TS ms)"
+          curl -s -X POST "https://webhook.site/bce76d47-75ed-452f-b2d4-d6dd4805a301" \
+            -H "Content-Type: application/json" \
+            -d "{\"event\":\"job_started\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)\",\"ms\":$TS}"
+
+      - name: Fail intentionally
+        run: |
+          TS=$(date +%s%3N)
+          echo "About to fail at: $(date) ($TS ms)"
+          curl -s -X POST "https://webhook.site/bce76d47-75ed-452f-b2d4-d6dd4805a301" \
+            -H "Content-Type: application/json" \
+            -d "{\"event\":\"about_to_fail\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)\",\"ms\":$TS}"
+          exit 1
+
+      - name: Timestamp 3 - Failure handler started
+        if: failure()
+        run: |
+          TS=$(date +%s%3N)
+          echo "Failure handler started at: $(date) ($TS ms)"
+          curl -s -X POST "https://webhook.site/bce76d47-75ed-452f-b2d4-d6dd4805a301" \
+            -H "Content-Type: application/json" \
+            -d "{\"event\":\"failure_handler_started\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)\",\"ms\":$TS}"
+          echo "session-token=test-token-12345" >> $GITHUB_OUTPUT
+          TS2=$(date +%s%3N)
+          curl -s -X POST "https://webhook.site/bce76d47-75ed-452f-b2d4-d6dd4805a301" \
+            -H "Content-Type: application/json" \
+            -d "{\"event\":\"github_output_written\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)\",\"ms\":$TS2}"
