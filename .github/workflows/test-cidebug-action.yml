@@ -1,0 +1,29 @@
+name: Test cidebug Action
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-debug:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Do some work
+        run: |
+          echo "Working..."
+          echo "Creating some files..."
+          echo "important data" > output.txt
+          echo "Work done at: $(date)"
+
+      - name: Fail intentionally
+        run: |
+          echo "Something went wrong!"
+          exit 1
+
+      - name: Debug with cidebug
+        if: failure()
+        uses: SAMREEN111-hash/cidebug/action@main
+        id: debug
